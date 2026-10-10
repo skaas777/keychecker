@@ -222,3 +222,46 @@ async def retrieve_models(key: APIKey, session, region):
             return model_info
         else:
             return []
+
+
+def pretty_print_aws_keys(keys):
+    print('-' * 90)
+    admin_count = 0
+    ready_to_go_keys = []
+    needs_setup_keys = []
+    useless_keys = []
+
+    for key in keys:
+        if key.useless:
+            useless_keys.append(key)
+        else:
+            if key.admin_priv:
+                admin_count += 1
+            if key.bedrock_enabled:
+                ready_to_go_keys.append(key)
+            else:
+                needs_setup_keys.append(key)
+
+    if ready_to_go_keys:
+        print(f"Validated {len(ready_to_go_keys)} AWS keys that are working and already have Bedrock setup.")
+        for key in ready_to_go_keys:
+            print(f'{key.api_key}' + (f' | {key.username}' if key.username != "" else "") +
+                  (' | admin key' if key.admin_priv else "") + (f' | {key.region}' if key.region != "" else "") +
+                  (f' | alt regions - {key.alt_regions}' if key.alt_regions else "") +
+                  (' | LOGGED KEY' if key.logged is True else ""))
+            if key.models:
+                print("Model Map - " + str(key.models))
+                print()
+    if needs_setup_keys:
+        print(f"\nValidated {len(needs_setup_keys)} AWS keys that failed to invoke Claude and need further permissions setup.")
+        for key in needs_setup_keys:
+            print(f'{key.api_key}' + (f' | {key.username}' if key.username != "" else "") +
+                  (' | admin key' if key.admin_priv else ""))
+
+    if useless_keys:
+        print(f"\nValidated {len(useless_keys)} AWS keys that are deemed useless and most likely s3 slop (can't be used to setup Bedrock/Claude)")
+        useless_keys = sorted(useless_keys, key=lambda x: 'Quarantined Key' not in x.useless_reasons)
+        for key in useless_keys:
+            print(f'{key.api_key}' + (f' | {key.username}' if key.username != "" else "")
+                  + (f' | REASON - {key.useless_reasons}' if len(key.useless_reasons) > 0 else ''))
+    print(f'\n--- Total Valid RPable AWS Keys: {len(keys) - len(useless_keys)} ({admin_count} with admin priv) ---\n')

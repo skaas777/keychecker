@@ -130,8 +130,6 @@ standard_model_ids = {
     "gpt-5.1-codex-mini",
 }
 
-running_org_verify = False
-
 non_slop_standard = {"gpt-5", "gpt-5-chat-latest", "o3", "gpt-4.1", "chatgpt-4o-latest", "gpt-4o"}  # i imagine this is all people care about now
 async def get_oai_model(key: APIKey, session, retries, org=None):
     accessible_models = set()
@@ -201,8 +199,9 @@ async def get_oai_key_attribs(key: APIKey, session, retries, org=None, check_id=
                         tpm = int(response.headers.get("x-ratelimit-limit-tokens"))
                         key.tier = await get_oai_key_tier(tpm, key.model)
                         if check_id:
-                            global running_org_verify
-                            running_org_verify = True
+                            # Per-key flag (was a module global that leaked
+                            # across keys and across web jobs)
+                            key.org_verify_attempted = True
                             key.id_verified = await check_id_verified(key, session, retries)
                         key.slop = False
                 return True
@@ -381,7 +380,7 @@ def pretty_print_oai_keys(keys, cloned_keys):
     if cloned_keys:
         print(f'\n--- Cloned {len(cloned_keys)} keys due to finding alternative orgs that could prompt ---')
     summary = f'\n--- Total Valid OpenAI Keys: {len(keys)} ' + f'({stats["quota_count"]} in quota, {stats["no_quota_count"]} no quota, {stats["slop_count"]} slop, {stats["org_count"]} orgs'
-    if running_org_verify:
+    if any(getattr(k, "org_verify_attempted", False) for k in keys):
         summary += f' - {stats["verified_org_count"]} with id verified'
     summary += f', {stats["t5_count"]} Tier 5) ---\n'
     print(summary)

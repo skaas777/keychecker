@@ -1,1 +1,9 @@
 /key_snapshots.txt
+/keychecker.db
+/keychecker.db-wal
+/keychecker.db-shm
+__pycache__/
+*.pyc
+.venv/
+.workbuddy/
+.pytest_cache/

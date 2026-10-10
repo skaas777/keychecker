@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Endpoint Configuration — Keychecker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="navbar-brand">
+            <span class="brand-icon">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 2-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+            </span>
+            <span class="brand-name">Keychecker</span>
+        </a>
+        <a href="/" class="nav-link">Key Check</a>
+        <a href="/config" class="nav-link active">Config</a>
+        <a href="/quality" class="nav-link">Quality Test</a>
+        <a href="/history" class="nav-link">History</a>
+    </nav>
+
+    <div class="container">
+        <header>
+            <h1>
+                <span class="header-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                </span>
+                Endpoint Configuration
+            </h1>
+            <p class="subtitle">Configure API endpoints, models, and keys for quality testing</p>
+        </header>
+
+        <!-- Add Endpoint Form -->
+        <section class="card animate-in-delay-1">
+            <h3>Add New Endpoint</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" id="ep-name" placeholder="e.g. OpenAI Official">
+                </div>
+                <div class="form-group">
+                    <label>Provider</label>
+                    <select id="ep-provider">
+                        <option value="">Select provider...</option>
+                        <option value="openai">OpenAI</option>
+                        <option value="anthropic">Anthropic</option>
+                        <option value="azure">Azure OpenAI</option>
+                        <option value="openrouter">OpenRouter</option>
+                        <option value="deepseek">DeepSeek</option>
+                        <option value="xai">xAI (Grok)</option>
+                        <option value="mistral">Mistral AI</option>
+                        <option value="makersuite">Google MakerSuite</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Base URL</label>
+                    <input type="text" id="ep-base-url" placeholder="Auto-filled based on provider">
+                </div>
+                <div class="form-group">
+                    <label>API Key</label>
+                    <input type="password" id="ep-api-key" placeholder="sk-...">
+                </div>
+            </div>
+            <button class="btn-primary" id="create-endpoint-btn">Add Endpoint</button>
+        </section>
+
+        <!-- Endpoints List -->
+        <section class="card animate-in-delay-2">
+            <div class="section-header">
+                <h3>Configured Endpoints</h3>
+                <button class="btn-secondary" id="refresh-endpoints-btn">Refresh</button>
+            </div>
+            <div id="endpoints-list"></div>
+        </section>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="edit-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Endpoint</h3>
+                <button class="modal-close" id="close-edit-modal-btn">&times;</button>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" id="edit-name">
+                </div>
+                <div class="form-group">
+                    <label>Base URL</label>
+                    <input type="text" id="edit-base-url">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>API Key (leave blank to keep current)</label>
+                <input type="password" id="edit-api-key" placeholder="********">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-primary" id="save-edit-btn">Save</button>
+                <button class="btn-secondary" id="cancel-edit-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Models Modal -->
+    <div id="models-modal" class="modal hidden">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>Models for <span id="models-ep-name"></span></h3>
+                <button class="modal-close" id="close-models-modal-btn">&times;</button>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Model ID (for API calls)</label>
+                    <input type="text" id="model-id" placeholder="e.g. gpt-4o">
+                </div>
+                <div class="form-group">
+                    <label>Advertised Model (for authenticity check)</label>
+                    <input type="text" id="model-advertised" placeholder="e.g. gpt-4o-2024-11-20">
+                </div>
+            </div>
+            <button class="btn-primary" id="add-model-btn">Add Model</button>
+            <div id="models-list" style="margin-top: 16px;"></div>
+            <div class="modal-actions" style="margin-top: 16px;">
+                <button class="btn-secondary" id="close-models-btn">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/common.js"></script>
+    <script src="/static/config.js"></script>
+</body>
+</html>

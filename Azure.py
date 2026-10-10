@@ -1,19 +1,23 @@
 import APIKey
-import requests
 
 
-def check_azure(key: APIKey):
+async def check_azure(key: APIKey, session):
     line = key.api_key.split(':')
     key.endpoint = line[0]
     api_key = line[1]
 
-    deployments = get_deployments(key, api_key)
+    deployments = await get_deployments(key, api_key, session)
     if deployments is None:
         return
 
     # deal with dall-e separately
     key.dalle_deployments = [deployment['id'] for deployment in deployments if deployment['model'] == 'dall-e-3']
-    key.deployments = [(deployment['id'], deployment['model'], test_deployment(key, api_key, deployment['id'], deployment['model'])) for deployment in deployments if deployment['model'].startswith('gpt')]
+    # Keep deployment tests sequential per key — Azure rate-limits aggressively
+    key.deployments = []
+    for deployment in deployments:
+        if deployment['model'].startswith('gpt'):
+            unfiltered = await test_deployment(key, api_key, deployment['id'], deployment['model'], session)
+            key.deployments.append((deployment['id'], deployment['model'], unfiltered))
 
     if key.deployments is None or not key.deployments:
         if not deployments:
@@ -44,15 +48,15 @@ def sort_deployments(deployment):
     return len(model_priority)
 
 
-def get_deployments(key: APIKey, api_key):
+async def get_deployments(key: APIKey, api_key, session):
     deployment_endpoint = f'https://{key.endpoint}.openai.azure.com/openai/deployments?api-version=2022-12-01'
-    response = requests.get(deployment_endpoint, headers={'api-key': api_key})
-    if response.status_code != 200:
-        return
-    return response.json()['data']
+    async with session.get(deployment_endpoint, headers={'api-key': api_key}) as response:
+        if response.status != 200:
+            return
+        return (await response.json())['data']
 
 
-def test_deployment(key: APIKey, api_key, deployment_id, deployment_model):
+async def test_deployment(key: APIKey, api_key, deployment_id, deployment_model, session):
     mp = 'hi'
     check_turbo = deployment_model == 'gpt-4'
     completions_endpoint = f'https://{key.endpoint}.openai.azure.com/openai/deployments/{deployment_id}/chat/completions?api-version=2024-02-01'
@@ -60,19 +64,23 @@ def test_deployment(key: APIKey, api_key, deployment_id, deployment_model):
         'messages': [{'role': 'user', 'content': f'{mp}'}],
         'max_tokens': 8200 if check_turbo else 1,
     }
-    response = requests.post(completions_endpoint, headers={'api-key': api_key, 'accept': 'application/json'}, json=data)
+    async with session.post(completions_endpoint, headers={'api-key': api_key, 'accept': 'application/json'}, json=data) as response:
+        status = response.status
+        body = await response.json()
 
-    if response.status_code == 200:
-        return 'choices' not in response.json() or 'content_filter_results' not in response.json().get('choices', [{}])[0]
-    elif response.status_code == 400:
+    if status == 200:
+        return 'choices' not in body or 'content_filter_results' not in body.get('choices', [{}])[0]
+    elif status == 400:
         if check_turbo:
-            if response.json()["error"]["code"] != "context_length_exceeded":
+            if body["error"]["code"] != "context_length_exceeded":
                 key.has_gpt4_turbo.append(deployment_id)
             data['max_tokens'] = 1
-            response = requests.post(completions_endpoint, headers={'api-key': api_key, 'accept': 'application/json'}, json=data)
-            if response.status_code == 200:
-                return 'choices' not in response.json() or 'content_filter_results' not in response.json().get('choices', [{}])[0]
-            if response.status_code == 400:
+            async with session.post(completions_endpoint, headers={'api-key': api_key, 'accept': 'application/json'}, json=data) as response:
+                status = response.status
+                body = await response.json()
+            if status == 200:
+                return 'choices' not in body or 'content_filter_results' not in body.get('choices', [{}])[0]
+            if status == 400:
                 return False
         return False
     return

@@ -3,6 +3,8 @@ import os.path
 
 
 class IO:
+    _progress_callback = None
+
     def __init__(self, filename):
         self.console = sys.stdout
         self.file = open(filename, 'a')
@@ -12,12 +14,14 @@ class IO:
         self.file.write(message)
 
     def flush(self):
-        pass
+        # Actually flush both streams (was a no-op)
+        self.console.flush()
+        self.file.flush()
 
     @staticmethod
-    def conditional_print(message, condition):
-        if condition:
-            print(message)
+    def set_progress_callback(cb):
+        """Set a progress callback for web mode. Pass None to restore CLI behavior."""
+        IO._progress_callback = cb
 
     @staticmethod
     def read_keys_from_file(filename):
